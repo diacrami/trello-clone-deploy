@@ -4,14 +4,14 @@ steps:
     args:
       - build
       - -t
-      - us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-front/$BRANCH_NAME:$SHORT_SHA
+      - us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-deploy/$BRANCH_NAME:$SHORT_SHA
       - .
 
   # 2) Push
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-front/$BRANCH_NAME:$SHORT_SHA
+      - us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-deploy/$BRANCH_NAME:$SHORT_SHA
 
   # 3) Deploy al mismo servicio, revisiones únicas por rama y commit
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -25,8 +25,8 @@ steps:
 
         if [ "$BRANCH_NAME" = "main" ]; then
           echo "Deploying MAIN branch..."
-          gcloud run deploy trello-clone-front \
-            --image us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-front/$BRANCH_NAME:$SHORT_SHA \
+          gcloud run deploy trello-clone-deploy \
+            --image us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-deploy/$BRANCH_NAME:$SHORT_SHA \
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
@@ -36,13 +36,13 @@ steps:
             --revision-suffix="${SHORT_SHA}"
 
           # Mover todo el tráfico a la última revisión de main
-          gcloud run services update-traffic trello-clone-front \
+          gcloud run services update-traffic trello-clone-deploy \
             --region us-central1 \
             --to-latest
         else
           echo "Deploying FEATURE branch: $BRANCH_NAME"
-          gcloud run deploy trello-clone-front \
-            --image us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-front/$BRANCH_NAME:$SHORT_SHA \
+          gcloud run deploy trello-clone-deploy \
+            --image us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-deploy/$BRANCH_NAME:$SHORT_SHA \
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
@@ -55,15 +55,15 @@ steps:
             --no-traffic
         fi
 
-        echo "URL principal: $(gcloud run services describe trello-clone-front --region us-central1 --format='value(status.url)')"
+        echo "URL principal: $(gcloud run services describe trello-clone-deploy --region us-central1 --format='value(status.url)')"
         echo "URL de esta rama: https://$(printf '%s' "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' \
           | sed -E 's/[^a-z0-9-]/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g' \
           | cut -c1-63)---$(
-          gcloud run services describe trello-clone-front --region us-central1 --format='value(status.url)' | sed -E 's#^https?://##'
+          gcloud run services describe trello-clone-deploy --region us-central1 --format='value(status.url)' | sed -E 's#^https?://##'
         )"
 
 images:
-  - us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-front/$BRANCH_NAME:$SHORT_SHA
+  - us-central1-docker.pkg.dev/$PROJECT_ID/trello-clone-deploy/$BRANCH_NAME:$SHORT_SHA
 
 options:
   logging: CLOUD_LOGGING_ONLY
